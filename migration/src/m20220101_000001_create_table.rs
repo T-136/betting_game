@@ -1,5 +1,7 @@
 use sea_orm_migration::prelude::*;
 
+
+
 #[derive(DeriveMigrationName)]
 pub struct Migration;
 
@@ -7,31 +9,32 @@ pub struct Migration;
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         // Replace the sample below with your own migration scripts
-
+        manager.create_index(sea_query::Index::create());
         manager
             .create_table(
                 Table::create()
                     .table(Player::Table)
                     .if_not_exists()
                     .col(
-                        ColumnDef::new(Player::Id)
+                        ColumnDef::new(Player::PlayerId)
                             .uuid()
                             .not_null()
                             .primary_key(),
                     )
                     .col(ColumnDef::new(Player::Name).string().not_null())
-                    .col(ColumnDef::new(Player::Bets).json())
+                    .col(ColumnDef::new(Player::Bets).uuid())
                     .col(ColumnDef::new(Player::Secret).string().not_null())
                     .to_owned(),
             )
             .await?;
+
         manager
             .create_table(
                 Table::create()
                     .table(Bet::Table)
                     .if_not_exists()
                     .col(
-                        ColumnDef::new(Bet::Id)
+                        ColumnDef::new(Bet::BetId)
                             .uuid()
                             .not_null()
                             .primary_key(),
@@ -51,7 +54,7 @@ impl MigrationTrait for Migration {
                     .table(Participants::Table)
                     .if_not_exists()
                     .col(
-                        ColumnDef::new(Participants::Id)
+                        ColumnDef::new(Participants::ParticipantsId)
                             .uuid()
                             .not_null()
                             .primary_key(),
@@ -63,15 +66,39 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(Bets::Table)
                     .if_not_exists()
+
                     .col(
-                        ColumnDef::new(Bets::Id)
+                        ColumnDef::new(Bets::BetsId)
                             .uuid()
                             .not_null()
                             .primary_key(),
                     )
+                    .col(
+                        ColumnDef::new(Bets::BetId)
+                            .uuid()
+                            .not_null()
+                    )
                     .to_owned(),
-            ).await
-
+            )
+            .await?;
+        manager.create_foreign_key(
+            ForeignKey::create()
+            .name("testname")
+            .from(Player::Table, Player::Bets)
+            .to(Bets::Table, Bets::BetsId)
+            .on_delete(ForeignKeyAction::Cascade)
+            .on_update(ForeignKeyAction::Cascade)
+            .to_owned(),
+        ).await?;
+        manager.create_foreign_key(
+            ForeignKey::create()
+            .name("testname")
+            .from(Bets::Table, Bets::BetId)
+            .to(Bet::Table, Bet::BetId)
+            .on_delete(ForeignKeyAction::Cascade)
+            .on_update(ForeignKeyAction::Cascade)
+            .to_owned(),
+        ).await
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
@@ -81,13 +108,13 @@ impl MigrationTrait for Migration {
             .drop_table(Table::drop().table(Player::Table).to_owned())
             .await?;
         manager
-            .drop_table(Table::drop().table(Player::Table).to_owned())
+            .drop_table(Table::drop().table(Bet::Table).to_owned())
             .await?;
         manager
-            .drop_table(Table::drop().table(Player::Table).to_owned())
+            .drop_table(Table::drop().table(Bets::Table).to_owned())
             .await?;
         manager
-            .drop_table(Table::drop().table(Player::Table).to_owned())
+            .drop_table(Table::drop().table(Participants::Table).to_owned())
             .await
     }
 }
@@ -99,14 +126,14 @@ enum Player {
     Name,
     Bets,
     Secret, // better typ
-    Id,
+    PlayerId,
 }
 
 #[derive(Iden)]
 enum Bet {
     Table,
     Name,
-    Id,
+    BetId,
     Odds,
     Stake,
     Participants,
@@ -118,12 +145,14 @@ enum Bet {
 #[derive(Iden)]
 enum Participants {
     Table,
-    Id,
+    ParticipantsId,
 }
 
 
 #[derive(Iden)]
 enum Bets {
     Table,
-    Id
+    BetsId,
+    BetId,
+    
 }

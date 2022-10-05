@@ -56,14 +56,14 @@ struct Player {
     name: String,
     bets: Vec<u64>,
     secret: String, // better typ
-    player_id: u64,
+    id: u64,
 }
 
 // the output to our `create_user` handler
 #[derive(Serialize)]
 struct Bet {
     name: String,
-    bet_id: u64,
+    id: u64,
     username: String,
     odds: f64,
     amount: f64,

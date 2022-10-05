@@ -43,7 +43,7 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(Bet::Owner).string().not_null())
                     .col(ColumnDef::new(Bet::Odds).string().not_null())
                     .col(ColumnDef::new(Bet::Stake).string().not_null())
-                    .col(ColumnDef::new(Bet::Participants).string().not_null())
+                    .col(ColumnDef::new(Bet::ParticipantsTableId).uuid().not_null())
                     .col(ColumnDef::new(Bet::Settled).string().not_null())
                     .col(ColumnDef::new(Bet::Description).string().not_null())
                     .to_owned(),
@@ -55,6 +55,12 @@ impl MigrationTrait for Migration {
                     .if_not_exists()
                     .col(
                         ColumnDef::new(Participants::ParticipantsId)
+                            .uuid()
+                            .not_null()
+
+                    )
+                    .col(
+                        ColumnDef::new(Participants::ParticipantsTableId)
                             .uuid()
                             .not_null()
                             .primary_key(),
@@ -98,6 +104,24 @@ impl MigrationTrait for Migration {
             .on_delete(ForeignKeyAction::Cascade)
             .on_update(ForeignKeyAction::Cascade)
             .to_owned(),
+        ).await?;
+        manager.create_foreign_key(
+            ForeignKey::create()
+            .name("testname")
+            .from(Bet::Table, Bet::ParticipantsTableId)
+            .to(Participants::Table, Participants::ParticipantsTableId)
+            .on_delete(ForeignKeyAction::Cascade)
+            .on_update(ForeignKeyAction::Cascade)
+            .to_owned(),
+        ).await?;
+        manager.create_foreign_key(
+            ForeignKey::create()
+            .name("testname")
+            .from(Participants::Table, Participants::ParticipantsId)
+            .to(Player::Table, Player::PlayerId)
+            .on_delete(ForeignKeyAction::Cascade)
+            .on_update(ForeignKeyAction::Cascade)
+            .to_owned(),
         ).await
     }
 
@@ -136,7 +160,7 @@ enum Bet {
     BetId,
     Odds,
     Stake,
-    Participants,
+    ParticipantsTableId,
     Owner,
     Settled,
     Description,
@@ -145,9 +169,9 @@ enum Bet {
 #[derive(Iden)]
 enum Participants {
     Table,
+    ParticipantsTableId,
     ParticipantsId,
 }
-
 
 #[derive(Iden)]
 enum Bets {

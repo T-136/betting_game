@@ -17,13 +17,13 @@ impl MigrationTrait for Migration {
                     .if_not_exists()
                     .col(
                         ColumnDef::new(Player::PlayerId)
-                            .uuid()
+                            .integer()
                             .not_null()
                             .primary_key(),
                     )
                     .col(ColumnDef::new(Player::Name).string().not_null())
-                    .col(ColumnDef::new(Player::Bets).uuid())
-                    .col(ColumnDef::new(Player::Secret).string().not_null())
+                    .col(ColumnDef::new(Player::Bets).integer())
+                    .col(ColumnDef::new(Player::Secret).integer().not_null())
                     .to_owned(),
             )
             .await?;
@@ -178,5 +178,4 @@ enum Bets {
     Table,
     BetsId,
     BetId,
-    
 }

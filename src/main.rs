@@ -5,19 +5,28 @@ use axum::{
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
+use tracing_subscriber::registry::Data;
 use std::net::SocketAddr;
+use rand::Rng;
+
+mod crud;
+mod entity;
+
+use crud::Player;
+use crud::write_new_player;
+use sea_orm::Database;
 
 #[tokio::main]
 async fn main() {
     // initialize tracing
     tracing_subscriber::fmt::init();
 
-    // build our application with a route
+    // let db = Database::connect(opt)
+
     let app = Router::new()
-        // `GET /` goes to `root`
         .route("/", get(root))
-        // `POST /users` goes to `create_user`
-        .route("/create_player", post(create_player));
+        .route("/create_new_player", post(create_new_player))
+        .route("/create_bet", post(create_bet));
 
     // run our app with hyper
     // `axum::Server` is a re-export of `hyper::Server`
@@ -34,36 +43,53 @@ async fn root() -> &'static str {
     "Hello, World!"
 }
 
-async fn create_player(
+async fn create_new_player(
     // this argument tells axum to parse the request body
     // as JSON into a `CreateUser` type
     Json(payload): Json<Player>,
-) -> impl IntoResponse {
-    // insert your application logic here
-    let user = User {
-        id: 1337,
-        username: payload.username,
-    };
+)  { //-> impl IntoResponse
+    // let rnd = rand::random::<u64>();
+    // let user = Player {
+    //     player_id: payload.player_id,
+    //     name: payload.name,
+    //     bets: payload.bets,
+    //     secret: Some(rnd),
+    // };
 
+    let written = crud::write_new_player(Json(payload)).await;
+    // this will be converted into a JSON response
+    // with a status code of `201 Created`
+    // (StatusCode::CREATED, Json(written.player_id))
+}
+
+async fn create_bet(
+    // this argument tells axum to parse the request body
+    // as JSON into a `CreateUser` type
+    Json(payload): Json<Bet>,
+) -> impl IntoResponse {
+    let user = Bet {
+        bet_id: payload.bet_id,
+        name: payload.name,
+        username: payload.username,
+        odds: payload.odds,
+        amount: payload.amount,
+        participants: payload.participants,
+        owner: payload.owner,
+        settled: payload.settled,
+        description: payload.description,
+    };
     // this will be converted into a JSON response
     // with a status code of `201 Created`
     (StatusCode::CREATED, Json(user))
 }
 
-// the input to our `create_user` handler
-#[derive(Deserialize)]
-struct Player {
-    name: String,
-    bets: Vec<u64>,
-    secret: String, // better typ
-    id: u64,
-}
+
 
 // the output to our `create_user` handler
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 struct Bet {
     name: String,
-    id: u64,
+    bet_id: u64,
     username: String,
     odds: f64,
     amount: f64,

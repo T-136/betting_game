@@ -1,7 +1,6 @@
 use sea_orm_migration::prelude::*;
 
 
-
 #[derive(DeriveMigrationName)]
 pub struct Migration;
 
@@ -9,7 +8,7 @@ pub struct Migration;
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         // Replace the sample below with your own migration scripts
-        manager.create_index(sea_query::Index::create());
+        // manager.create_index(sea_query::Index::create());
         manager
             .create_table(
                 Table::create()
@@ -17,16 +16,14 @@ impl MigrationTrait for Migration {
                     .if_not_exists()
                     .col(
                         ColumnDef::new(Player::PlayerId)
-                            .integer()
+                            .uuid()
                             .not_null()
                             .primary_key(),
                     )
                     .col(ColumnDef::new(Player::Name).string().not_null())
-                    .col(ColumnDef::new(Player::Bets).integer())
                     .col(ColumnDef::new(Player::Secret).integer().not_null())
                     .to_owned(),
-            )
-            .await?;
+            ).await?;
 
         manager
             .create_table(
@@ -40,10 +37,9 @@ impl MigrationTrait for Migration {
                             .primary_key(),
                     )
                     .col(ColumnDef::new(Bet::Name).string().not_null())
-                    .col(ColumnDef::new(Bet::Owner).string().not_null())
+                    .col(ColumnDef::new(Bet::PlayerId).uuid().not_null())
                     .col(ColumnDef::new(Bet::Odds).string().not_null())
                     .col(ColumnDef::new(Bet::Stake).string().not_null())
-                    .col(ColumnDef::new(Bet::ParticipantsTableId).uuid().not_null())
                     .col(ColumnDef::new(Bet::Settled).string().not_null())
                     .col(ColumnDef::new(Bet::Description).string().not_null())
                     .to_owned(),
@@ -51,55 +47,32 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
-                    .table(Participants::Table)
+                    .table(Jointable::Table)
                     .if_not_exists()
                     .col(
-                        ColumnDef::new(Participants::ParticipantsId)
+                        ColumnDef::new(Jointable::ConnKey)
                             .uuid()
+                            .primary_key()
                             .not_null()
-
                     )
-                    .col(
-                        ColumnDef::new(Participants::ParticipantsTableId)
-                            .uuid()
-                            .not_null()
-                            .primary_key(),
-                    )
+                    .col(ColumnDef::new(Jointable::PlayerId).uuid().not_null())
+                    .col(ColumnDef::new(Jointable::BetId).uuid().not_null())
                     .to_owned(),
             ).await?;
-        manager
-            .create_table(
-                Table::create()
-                    .table(Bets::Table)
-                    .if_not_exists()
 
-                    .col(
-                        ColumnDef::new(Bets::BetsId)
-                            .uuid()
-                            .not_null()
-                            .primary_key(),
-                    )
-                    .col(
-                        ColumnDef::new(Bets::BetId)
-                            .uuid()
-                            .not_null()
-                    )
-                    .to_owned(),
-            )
-            .await?;
         manager.create_foreign_key(
             ForeignKey::create()
-            .name("testname")
-            .from(Player::Table, Player::Bets)
-            .to(Bets::Table, Bets::BetsId)
+            .name("playerid_fkey")
+            .from(Jointable::Table, Jointable::PlayerId)
+            .to(Player::Table, Player::PlayerId)
             .on_delete(ForeignKeyAction::Cascade)
             .on_update(ForeignKeyAction::Cascade)
             .to_owned(),
         ).await?;
         manager.create_foreign_key(
             ForeignKey::create()
-            .name("testname")
-            .from(Bets::Table, Bets::BetId)
+            .name("betid_fkey")
+            .from(Jointable::Table, Jointable::BetId)
             .to(Bet::Table, Bet::BetId)
             .on_delete(ForeignKeyAction::Cascade)
             .on_update(ForeignKeyAction::Cascade)
@@ -107,17 +80,8 @@ impl MigrationTrait for Migration {
         ).await?;
         manager.create_foreign_key(
             ForeignKey::create()
-            .name("testname")
-            .from(Bet::Table, Bet::ParticipantsTableId)
-            .to(Participants::Table, Participants::ParticipantsTableId)
-            .on_delete(ForeignKeyAction::Cascade)
-            .on_update(ForeignKeyAction::Cascade)
-            .to_owned(),
-        ).await?;
-        manager.create_foreign_key(
-            ForeignKey::create()
-            .name("testname")
-            .from(Participants::Table, Participants::ParticipantsId)
+            .name("playerid_fkey")
+            .from(Bet::Table, Bet::PlayerId)
             .to(Player::Table, Player::PlayerId)
             .on_delete(ForeignKeyAction::Cascade)
             .on_update(ForeignKeyAction::Cascade)
@@ -135,10 +99,7 @@ impl MigrationTrait for Migration {
             .drop_table(Table::drop().table(Bet::Table).to_owned())
             .await?;
         manager
-            .drop_table(Table::drop().table(Bets::Table).to_owned())
-            .await?;
-        manager
-            .drop_table(Table::drop().table(Participants::Table).to_owned())
+            .drop_table(Table::drop().table(Jointable::Table).to_owned())
             .await
     }
 }
@@ -148,7 +109,6 @@ impl MigrationTrait for Migration {
 enum Player {
     Table,
     Name,
-    Bets,
     Secret, // better typ
     PlayerId,
 }
@@ -160,22 +120,15 @@ enum Bet {
     BetId,
     Odds,
     Stake,
-    ParticipantsTableId,
-    Owner,
+    PlayerId,
     Settled,
     Description,
 }
 
 #[derive(Iden)]
-enum Participants {
+enum Jointable {
     Table,
-    ParticipantsTableId,
-    ParticipantsId,
-}
-
-#[derive(Iden)]
-enum Bets {
-    Table,
-    BetsId,
+    PlayerId,
     BetId,
+    ConnKey,
 }

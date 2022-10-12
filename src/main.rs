@@ -4,7 +4,7 @@ use axum::{
     response::{IntoResponse, Response},
     Json, Router,
 };
-use sea_orm::error;
+use sea_orm::{DatabaseConnection, Database};
 use std::net::SocketAddr;
 use serde_json::{self, to_string};
 use uuid::Uuid;
@@ -15,6 +15,14 @@ mod entity;
 use crate::entity::player;
 use crate::entity::bet;
 use crud::{write_new_player, write_new_bet, find_all_owned_bets, write_participant_to_bet, find_all_participats, BetInput, ParticipationInput};
+
+async fn get_db() -> DatabaseConnection{
+    dotenv::dotenv().ok();
+    let database_url = dotenv::var("DATABASE_URL").unwrap();
+    println!("env: {}", database_url);
+    let db: DatabaseConnection = Database::connect(database_url).await.unwrap();
+    db
+}
 
 #[tokio::main]
 async fn main() {
@@ -82,8 +90,9 @@ async fn get_owned_bets(
     player_id: String
 ) -> impl IntoResponse {  
     println!("{:?}", player_id);
+    let db = get_db().await;
     if let Ok(player_uuid) = Uuid::parse_str(&player_id) {
-        let bets = find_all_owned_bets(player_uuid).await;
+        let bets = find_all_owned_bets(&db, player_uuid).await;
         (StatusCode::OK, serde_json::to_string(&bets).unwrap())
     } else {
         (StatusCode::BAD_REQUEST, "player id not of type Uuid".to_string())
@@ -110,3 +119,5 @@ async fn get_all_participants(
 //     "settled": "false",
 //     "description": "very good bet"
 // }
+
+

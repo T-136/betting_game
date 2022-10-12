@@ -5,6 +5,8 @@ use axum::Json;
 use uuid::Uuid;
 use serde::Deserialize;
 
+
+
 use crate::entity::{player, jointable};
 use crate::entity::bet;
 
@@ -67,10 +69,9 @@ pub async fn write_participant_to_bet(player_id: Uuid, bet_id: Uuid) -> jointabl
     new_joitable
 }
 
-pub async fn find_all_owned_bets(player_id: Uuid) -> Vec<bet::Model> {
-    let db: DatabaseConnection = get_db().await;
+pub async fn find_all_owned_bets(db: &DatabaseConnection, player_id: Uuid) -> Vec<bet::Model> {
     let stuff = bet::Entity::find().filter(bet::Column::PlayerId.eq(player_id))
-        .all(&db).await.unwrap();
+        .all(db).await.unwrap();
     stuff
 }
 
@@ -95,4 +96,46 @@ pub struct BetInput{
 pub struct ParticipationInput {
     pub player_id: Uuid,
     pub bet_id: Uuid,
+}
+
+
+#[cfg(test)]
+mod tests {
+    use sea_orm::{
+        entity::prelude::*, entity::*, tests_cfg::*, 
+        DatabaseBackend, MockDatabase, Transaction,
+    };
+    use super::*;
+    use crate::entity::bet;
+
+    #[async_std::test]
+    async fn test_find_all_owned_bets() -> Result<(), DbErr> {
+        let db = MockDatabase::new(DatabaseBackend::Postgres)
+        .append_query_results(vec![
+            vec![bet::Model {
+                bet_id: uuid::uuid!("c4a3e328-7a80-4764-8376-88029a611633"),
+                player_id: uuid::uuid!("0ae5bf71-c6b0-4229-8c1c-03e9e7d6c3b3"),
+                name: "test 1".to_string(),
+                odds: "0.5".to_string(),
+                stake: "500".to_string(),
+                settled: "false".to_string(),
+                description: "such awesome bet".to_string(),
+            }]
+        ]).into_connection();
+        
+        assert_eq!(
+            find_all_owned_bets(&db, uuid::uuid!("0ae5bf71-c6b0-4229-8c1c-03e9e7d6c3b3")).await,
+            vec![bet::Model {
+                bet_id: uuid::uuid!("c4a3e328-7a80-4764-8376-88029a611633"),
+                player_id: uuid::uuid!("0ae5bf71-c6b0-4229-8c1c-03e9e7d6c3b3"),
+                name: "test 1".to_string(),
+                odds: "0.5".to_string(),
+                stake: "500".to_string(),
+                settled: "false".to_string(),
+                description: "such awesome bet".to_string(),
+            }]
+        );
+
+        Ok(())
+    }
 }

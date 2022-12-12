@@ -1,1 +1,3 @@
-add serde::serialize, serde::deserialize to entity player model struct
+after migration: 
+  add Deserialize, Serialize to derive for player struct in src/entity/player 
+    
